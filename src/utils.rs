@@ -1,4 +1,4 @@
-use crate::Message;
+use crate::{Message, Participant};
 use regex::Regex;
 use serde_json::Value;
 use std::fs::{read_dir, File, OpenOptions};
@@ -31,19 +31,31 @@ pub fn get_data_keys() -> (Vec<String>, Vec<String>) {
     (dfields, mfields)
 }
 
-pub fn load_message_file(fname: &str) -> Value {
+pub fn get_message_file(fname: &str) -> Value {
     let f = File::open(fname).unwrap();
     let r = BufReader::new(f);
     serde_json::from_reader(r).unwrap()
 }
 
-pub fn load_messages(fname: &str) -> Vec<Message> {
-    let mf = load_message_file(fname);
+pub fn get_messages(fname: &str) -> Vec<Message> {
+    let mf = get_message_file(fname);
     serde_json::from_str(&mf["messages"].to_string()).unwrap()
 }
 
-pub fn merge_files(dir: &str, regex_fname: &str, outfile: &str) {
-    let rg = Regex::new(regex_fname).unwrap();
+pub fn get_participants(fname: &str) -> Vec<Participant> {
+    let f = get_message_file(fname);
+    serde_json::from_value(
+        f.as_object()
+            .unwrap()
+            .get("participants")
+            .unwrap()
+            .to_owned(),
+    )
+    .unwrap()
+}
+
+pub fn merge_files(dir: &str, outfile: &str) {
+    let rg = Regex::new(r"message_\d+\.json$").unwrap();
     let of = OpenOptions::new()
         .create(true)
         .append(true)
@@ -55,9 +67,26 @@ pub fn merge_files(dir: &str, regex_fname: &str, outfile: &str) {
     for f in read_dir(dir).unwrap() {
         let fp = f.unwrap().path();
         if rg.is_match(&fp.file_name().unwrap().to_str().unwrap()) {
-            all_messages.extend(load_messages(fp.as_os_str().to_str().unwrap()));
+            all_messages.extend(get_messages(fp.as_os_str().to_str().unwrap()));
         }
     }
 
     serde_json::to_writer(of, &all_messages).unwrap();
+}
+
+pub fn get_cleaned_messages(fname: &str) -> Vec<Message> {
+    let f = File::open(fname).unwrap();
+    let r = BufReader::new(f);
+    serde_json::from_reader(r).unwrap()
+}
+
+pub fn get_all_participants(fname: &str) -> Vec<String> {
+    let messages = get_cleaned_messages(fname);
+    let mut parts = messages
+        .into_iter()
+        .map(|m| m.sender_name)
+        .collect::<Vec<_>>();
+    parts.sort_unstable();
+    parts.dedup();
+    parts
 }

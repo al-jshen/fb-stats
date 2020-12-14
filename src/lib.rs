@@ -37,3 +37,8 @@ pub struct Message {
     pub audio_files: Option<Vec<Media>>,
     pub share: Option<Share>,
 }
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct Participant {
+    pub name: String,
+}
