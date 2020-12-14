@@ -1,4 +1,5 @@
 use crate::{Message, Participant};
+use rayon::prelude::*;
 use regex::Regex;
 use serde_json::Value;
 use std::fs::{read_dir, File, OpenOptions};
@@ -83,7 +84,7 @@ pub fn get_cleaned_messages(fname: &str) -> Vec<Message> {
 pub fn get_all_participants(fname: &str) -> Vec<String> {
     let messages = get_cleaned_messages(fname);
     let mut parts = messages
-        .into_iter()
+        .into_par_iter()
         .map(|m| m.sender_name)
         .collect::<Vec<_>>();
     parts.sort_unstable();
